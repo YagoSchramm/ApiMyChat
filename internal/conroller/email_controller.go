@@ -3,7 +3,7 @@ package controller
 import (
 	"net/http"
 
-	"github.com/YagoSchramm/ApiMyChat/internal/model"
+	"github.com/YagoSchramm/ApiMyChat/internal/service/model"
 	"github.com/YagoSchramm/ApiMyChat/internal/usecase"
 	"github.com/gin-gonic/gin"
 )

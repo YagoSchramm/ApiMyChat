@@ -32,6 +32,14 @@ func (uc *UserUseCase) GetByID(id string) (entity.User, error) {
 	}
 	return user, nil
 }
+func (uc *UserUseCase) GetByEmail(email string) (entity.User, error) {
+	user, err := uc.urepo.GetByEmail(email)
+	if err != nil {
+		fmt.Println(err)
+		return entity.User{}, nil
+	}
+	return user, nil
+}
 func (uc *UserUseCase) GetAll(id string) ([]entity.User, error) {
 	return uc.urepo.GetAll(id)
 }

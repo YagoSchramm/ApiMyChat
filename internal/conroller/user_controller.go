@@ -9,7 +9,8 @@ import (
 )
 
 type UserController struct {
-	Usecase usecase.UserUseCase
+	Usecase     usecase.UserUseCase
+	AuthUsecase usecase.AuthUsecase
 }
 
 func (uctrl *UserController) CreateUser(c *gin.Context) {
@@ -18,16 +19,34 @@ func (uctrl *UserController) CreateUser(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, "Erro de registro")
 		return
 	}
-	if _, err := uctrl.Usecase.CreateUser(req); err != nil {
+	resp, err := uctrl.AuthUsecase.Supabase.CreateUser(req.Email, req.Password)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, err)
+		return
+	}
+	newUser := entity.User{UID: resp.ID, Email: req.Email, Name: req.Name, Description: req.Description, CreatedAt: req.CreatedAt}
+	if _, err := uctrl.Usecase.CreateUser(newUser); err != nil {
 		c.JSON(http.StatusInternalServerError, err)
 		return
 	}
 	c.JSON(http.StatusCreated, "Usuário criado com sucesso!")
+
 }
 func (uctrl *UserController) GetByID(c *gin.Context) {
 	id := c.Param("id")
 	var user entity.User
 	user, err := uctrl.Usecase.GetByID(id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, err)
+		return
+	}
+	user1 := user
+	c.JSON(http.StatusAccepted, user1)
+}
+func (uctrl *UserController) GetByEmail(c *gin.Context) {
+	email := c.Param("email")
+	var user entity.User
+	user, err := uctrl.Usecase.GetByID(email)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, err)
 		return
@@ -48,4 +67,44 @@ func (uctrl *UserController) GetAll(id string, c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusAccepted, userList)
+}
+
+func (uctrl *UserController) Login(ctx *gin.Context) {
+
+	var req entity.LoginRequest
+
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid body"})
+		return
+	}
+
+	token, err := uctrl.AuthUsecase.Login(req.Email, req.Password)
+	if err != nil {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+	var user entity.User
+	if token != "" {
+		user, err := uctrl.Usecase.GetByEmail(req.Email)
+		if err != nil {
+			ctx.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+			return
+		}
+		ctx.JSON(http.StatusOK, gin.H{
+			"uid":         user.UID,
+			"email":       user.Email,
+			"name":        user.Name,
+			"description": user.Description,
+			"createdAt":   user.CreatedAt,
+		})
+		return
+	}
+	ctx.JSON(http.StatusOK, gin.H{
+		"uid":         user.UID,
+		"email":       user.Email,
+		"name":        user.Name,
+		"description": user.Description,
+		"createdAt":   user.CreatedAt,
+	})
+
 }

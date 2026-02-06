@@ -16,23 +16,28 @@ func NewUserRepository(connection *sql.DB) UserRepository {
 }
 func (ur *UserRepository) GetByID(id string) (entity.User, error) {
 	user := entity.User{}
-	err := ur.connection.QueryRow("SELECT * FROM users WHERE uid = $1", id).Scan(&user.UID, &user.Email, &user.Name)
+	err := ur.connection.QueryRow("SELECT * FROM users WHERE uid = $1", id).Scan(&user.UID, &user.Email, &user.Name, &user.Description, &user.CreatedAt)
+	return user, err
+}
+func (ur *UserRepository) GetByEmail(email string) (entity.User, error) {
+	user := entity.User{}
+	err := ur.connection.QueryRow("SELECT * FROM users WHERE email = $1", email).Scan(&user.UID, &user.Email, &user.Name, &user.Description, &user.CreatedAt)
 	return user, err
 }
 
 func (ur *UserRepository) CreateUser(user entity.User) (entity.User, error) {
 	var id int
-	query, err := ur.connection.Prepare("INSERT INTO users (uid,name,email,createdAt,description) VALUES ($1, $2,$3,$4) ON CONFLICT DO NOTHING RETURNING id")
+	query, err := ur.connection.Prepare("INSERT INTO users (uid,name,email,created_At,description) VALUES ($1, $2,$3,$4,$5) ON CONFLICT DO NOTHING RETURNING uid")
 	if err != nil {
 		fmt.Println(err)
 		return entity.User{}, err
 	}
 	err = query.QueryRow(user.UID, user.Name, user.Email, user.CreatedAt, user.Description).Scan(&id)
 	if err != nil {
-		fmt.Printf("Usuário %d cadastrado com sucesso!", id)
+		fmt.Printf("erro", id)
 		return user, nil
 	}
-	return entity.User{}, nil
+	return user, nil
 }
 func (ur *UserRepository) GetAll(id string) ([]entity.User, error) {
 	query := "select * from users"

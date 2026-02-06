@@ -6,21 +6,22 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/YagoSchramm/ApiMyChat/internal/entity"
 	"github.com/YagoSchramm/ApiMyChat/internal/service/model"
 )
 
-type SupabaseAuthService struct {
+type SupabaseService struct {
 	Url string
 	Key string
 }
 
-func NewSupabaseAuthService(url, key string) *SupabaseAuthService {
-	return &SupabaseAuthService{
+func NewSupabaseAuthService(url, key string) *SupabaseService {
+	return &SupabaseService{
 		Url: url,
 		Key: key,
 	}
 }
-func (s *SupabaseAuthService) Login(email, password string) (*model.LoginResponse, error) {
+func (s *SupabaseService) Login(email, password string) (*model.LoginResponse, error) {
 
 	body := map[string]string{
 		"email":    email,
@@ -51,6 +52,44 @@ func (s *SupabaseAuthService) Login(email, password string) (*model.LoginRespons
 	}
 
 	var response model.LoginResponse
+	json.NewDecoder(res.Body).Decode(&response)
+
+	return &response, nil
+}
+func (s *SupabaseService) CreateUser(email, password string) (*entity.LoginUserResponse, error) {
+
+	body := entity.LoginRequest{
+		Email:    email,
+		Password: password,
+	}
+
+	jsonBody, _ := json.Marshal(body)
+
+	req, err := http.NewRequest(
+		"POST",
+		s.Url+"/auth/v1/admin/users",
+		bytes.NewBuffer(jsonBody),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("apikey", s.Key)
+	req.Header.Set("Authorization", "Bearer "+s.Key)
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{}
+	res, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode != 200 && res.StatusCode != 201 {
+		return nil, errors.New("erro ao criar usuário no supabase")
+	}
+
+	var response entity.LoginUserResponse
 	json.NewDecoder(res.Body).Decode(&response)
 
 	return &response, nil

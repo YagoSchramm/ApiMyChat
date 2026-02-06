@@ -5,10 +5,10 @@ import (
 )
 
 type AuthUsecase struct {
-	Supabase *service.SupabaseAuthService
+	Supabase *service.SupabaseService
 }
 
-func NewAuthUsecase(s *service.SupabaseAuthService) *AuthUsecase {
+func NewAuthUsecase(s *service.SupabaseService) *AuthUsecase {
 	return &AuthUsecase{Supabase: s}
 }
 

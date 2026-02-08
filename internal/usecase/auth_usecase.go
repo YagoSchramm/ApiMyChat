@@ -21,3 +21,14 @@ func (u *AuthUsecase) Login(email, password string) (string, error) {
 
 	return res.AccessToken, nil
 }
+func (u *AuthUsecase) VerifyJWT(id string) (string, error) {
+	res, err := u.Supabase.UserExists(id)
+
+	if err != nil {
+		return "", err
+	}
+	if res == true {
+		return id, nil
+	}
+	return "", err
+}

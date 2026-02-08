@@ -5,6 +5,7 @@ import (
 	"github.com/YagoSchramm/ApiMyChat/internal/db"
 	"github.com/YagoSchramm/ApiMyChat/internal/repository"
 	"github.com/YagoSchramm/ApiMyChat/internal/service"
+	"github.com/YagoSchramm/ApiMyChat/internal/service/model"
 	"github.com/YagoSchramm/ApiMyChat/internal/usecase"
 	"github.com/gin-gonic/gin"
 )
@@ -37,12 +38,29 @@ func main() {
 		Usecase:     uc,
 		AuthUsecase: *authUsecase,
 	}
+	hub := model.NewHub()
+	msgRepo := repository.NewMessageRepository(db)
+	msgUse := usecase.NewMessageUsecase(msgRepo, hub)
+	msgController := &controller.MessageController{
+		Usecase: msgUse,
+	}
+
+	wsController := controller.NewWSController(hub, msgUse, authUsecase)
+	roomRepo := repository.NewRoomRepository(db)
+	roomUsecase := usecase.NewRoomUsecase(roomRepo)
+	roomController := &controller.RoomController{
+		Usecase: roomUsecase,
+	}
 
 	r := gin.Default()
 	r.POST("/send-code", EmailController.RequestOTP)
 	r.POST("/verify-email", EmailController.VerifyCode)
-	r.POST("/register", usercontroller.CreateUser)
+	r.POST("/CreateUser", usercontroller.CreateUser)
 	r.GET("/GetUserByID/:id", usercontroller.GetByID)
 	r.POST("/login", usercontroller.Login)
+	r.POST("/CreateRoom", roomController.CreateRoom)
+	r.GET("/messages", msgController.GetByRoom)
+	r.GET("/ws/connect", wsController.Connect)
+	r.POST("/ws/message", wsController.SendMessage)
 	r.Run(":8000")
 }

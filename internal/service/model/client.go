@@ -4,6 +4,7 @@ import "github.com/gorilla/websocket"
 
 type Client struct {
 	UserID string
+	RoomID string
 	Conn   *websocket.Conn
 	Send   chan []byte
 }
@@ -14,5 +15,14 @@ func (c *Client) WritePump() {
 		if err != nil {
 			return
 		}
+	}
+}
+func (c *Client) ReadPump(onMessage func([]byte)) {
+	for {
+		_, msg, err := c.Conn.ReadMessage()
+		if err != nil {
+			break
+		}
+		onMessage(msg)
 	}
 }

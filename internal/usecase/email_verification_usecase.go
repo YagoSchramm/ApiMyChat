@@ -6,15 +6,12 @@ import (
 	"time"
 
 	"github.com/YagoSchramm/ApiMyChat/internal/repository"
+	"github.com/YagoSchramm/ApiMyChat/internal/service"
 )
-
-type EmailService interface {
-	Send(to, body string) error
-}
 
 type OTPUseCase struct {
 	Repo  *repository.MemoryCache
-	Email EmailService
+	Email *service.GmailService
 }
 
 func (u *OTPUseCase) ExecuteSend(email string) error {

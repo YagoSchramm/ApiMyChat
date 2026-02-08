@@ -16,30 +16,27 @@ func NewMessageRepository(db *sql.DB) MessageRepository {
 
 func (r *MessageRepository) Create(msg *entity.Message) error {
 	query := `
-		INSERT INTO messages (id, room_id, sender_id, content, created_at)
-		VALUES ($1, $2, $3, $4, $5)
-	`
+	INSERT INTO messages (id, room_id, sender_id, content, created_at)
+	VALUES ($1,$2,$3,$4,$5)`
 
-	_, err := r.connection.Exec(
-		query,
+	_, err := r.connection.Exec(query,
 		msg.ID,
 		msg.RoomID,
 		msg.SenderID,
 		msg.Content,
 		msg.CreatedAt,
 	)
-
 	return err
 }
 
 func (r *MessageRepository) GetByRoom(roomID string, limit int) ([]entity.Message, error) {
+
 	query := `
-		SELECT id, room_id, sender_id, content, created_at
-		FROM messages
-		WHERE room_id = $1
-		ORDER BY created_at DESC
-		LIMIT $2
-	`
+	SELECT id, room_id, sender_id, content, created_at
+	FROM messages
+	WHERE room_id = $1
+	ORDER BY created_at DESC
+	LIMIT $2`
 
 	rows, err := r.connection.Query(query, roomID, limit)
 	if err != nil {
@@ -64,4 +61,14 @@ func (r *MessageRepository) GetByRoom(roomID string, limit int) ([]entity.Messag
 	}
 
 	return messages, nil
+}
+func (r *MessageRepository) UpdateStatus(messageID, status string) error {
+
+	query := `
+	UPDATE messages 
+	SET status=$1 
+	WHERE id=$2`
+
+	_, err := r.connection.Exec(query, status, messageID)
+	return err
 }

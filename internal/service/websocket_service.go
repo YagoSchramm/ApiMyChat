@@ -57,3 +57,18 @@ func (s *WebSocketService) Broadcast(roomID string, message []byte) {
 	}
 	room.Mutex.RUnlock()
 }
+func (s *WebSocketService) LeaveRoom(roomID string, userID string) {
+	s.Mutex.RLock()
+	room, exists := s.Rooms[roomID]
+	s.Mutex.RUnlock()
+
+	if !exists {
+		return
+	}
+
+	room.Mutex.Lock()
+	delete(room.Clients, userID)
+	room.Mutex.Unlock()
+
+	fmt.Println("User saiu da room:", roomID)
+}

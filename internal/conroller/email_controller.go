@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/YagoSchramm/ApiMyChat/internal/service/model"
@@ -21,6 +22,7 @@ func (ctrl *EmailController) RequestOTP(c *gin.Context) {
 	}
 
 	if err := ctrl.UseCase.ExecuteSend(req.Email); err != nil {
+		fmt.Println(err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Falha ao enviar e-mail"})
 		return
 	}

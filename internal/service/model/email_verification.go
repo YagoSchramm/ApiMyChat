@@ -1,7 +1,7 @@
 package model
 
 type EmailRequest struct {
-	Email string `json:"email" binding:"required,email"`
+	Email string `json:"email"`
 }
 
 type VerifyRequest struct {

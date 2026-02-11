@@ -1,0 +1,184 @@
+﻿<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>WebSocket Test - ApiMyChat</title>
+  <style>
+    :root { color-scheme: light; }
+    body { font-family: "Segoe UI", Tahoma, Arial, sans-serif; margin: 24px; background: #f7f7fb; color: #222; }
+    .card { background: #fff; border: 1px solid #e3e3ee; border-radius: 8px; padding: 16px; max-width: 900px; }
+    h1 { margin: 0 0 12px; font-size: 20px; }
+    label { display: block; font-size: 12px; color: #555; margin-top: 8px; }
+    input, select, button, textarea { width: 100%; padding: 8px; margin-top: 4px; border: 1px solid #cfcfe0; border-radius: 6px; box-sizing: border-box; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+    .actions { display: flex; gap: 8px; margin-top: 12px; }
+    .actions button { width: auto; }
+    .log { margin-top: 12px; background: #0f1020; color: #e7e7f5; padding: 10px; border-radius: 6px; height: 260px; overflow: auto; font-family: Consolas, monospace; font-size: 12px; }
+    .status { font-size: 12px; color: #444; margin-top: 8px; }
+    .badge { display: inline-block; padding: 2px 6px; border-radius: 10px; font-size: 11px; background: #eee; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Teste WebSocket - ApiMyChat</h1>
+
+    <div class="row">
+      <div>
+        <label>URL base do WS</label>
+        <input id="wsBase" value="ws://localhost:8000/ws/connect" />
+      </div>
+      <div>
+        <label>Dev bypass</label>
+        <select id="devBypass">
+          <option value="1">Sim (dev=1)</option>
+          <option value="0">Não</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="row">
+      <div>
+        <label>User ID (ou token JWT)</label>
+        <input id="userId" placeholder="ex: 123" />
+      </div>
+      <div>
+        <label>Room ID</label>
+        <input id="roomId" placeholder="ex: sala-abc" />
+      </div>
+    </div>
+
+    <div class="actions">
+      <button id="connectBtn">Conectar</button>
+      <button id="disconnectBtn" disabled>Desconectar</button>
+    </div>
+
+    <label>Mensagem</label>
+    <textarea id="message" rows="3" placeholder="Digite a mensagem..."></textarea>
+
+    <div class="actions">
+      <button id="sendBtn" disabled>Enviar via WS</button>
+      <button id="sendHttpBtn">Enviar via HTTP (/ws/message)</button>
+      <button id="clearBtn">Limpar log</button>
+    </div>
+
+    <div class="status">
+      Status: <span id="status" class="badge">desconectado</span>
+    </div>
+
+    <div id="log" class="log"></div>
+  </div>
+
+<script>
+  const el = (id) => document.getElementById(id);
+  const logBox = el('log');
+  let socket = null;
+
+  function log(msg) {
+    const time = new Date().toLocaleTimeString();
+    logBox.textContent += `[${time}] ${msg}\n`;
+    logBox.scrollTop = logBox.scrollHeight;
+  }
+
+  function setStatus(text) {
+    el('status').textContent = text;
+  }
+
+  function buildWsUrl() {
+    const base = el('wsBase').value.trim();
+    const id = encodeURIComponent(el('userId').value.trim());
+    const room = encodeURIComponent(el('roomId').value.trim());
+    const dev = el('devBypass').value;
+    const sep = base.includes('?') ? '&' : '?';
+    return `${base}${sep}id=${id}&room=${room}&dev=${dev}`;
+  }
+
+  el('connectBtn').addEventListener('click', () => {
+    const id = el('userId').value.trim();
+    const room = el('roomId').value.trim();
+    if (!id || !room) {
+      log('Preencha userId e roomId.');
+      return;
+    }
+
+    const url = buildWsUrl();
+    socket = new WebSocket(url);
+
+    socket.addEventListener('open', () => {
+      setStatus('conectado');
+      el('connectBtn').disabled = true;
+      el('disconnectBtn').disabled = false;
+      el('sendBtn').disabled = false;
+      log(`Conectado em ${url}`);
+    });
+
+    socket.addEventListener('message', (event) => {
+      log(`Recebido: ${event.data}`);
+      try {
+        const parsed = JSON.parse(event.data);
+        if (parsed && parsed.content) {
+          log(`Mensagem (content): ${parsed.content}`);
+        }
+      } catch (_) {}
+    });
+
+    socket.addEventListener('close', () => {
+      setStatus('desconectado');
+      el('connectBtn').disabled = false;
+      el('disconnectBtn').disabled = true;
+      el('sendBtn').disabled = true;
+      log('Conexão encerrada.');
+    });
+
+    socket.addEventListener('error', (err) => {
+      log(`Erro WS: ${err}`);
+    });
+  });
+
+  el('disconnectBtn').addEventListener('click', () => {
+    if (socket) socket.close();
+  });
+
+  el('sendBtn').addEventListener('click', () => {
+    const msg = el('message').value.trim();
+    if (!msg) return;
+    if (!socket || socket.readyState !== WebSocket.OPEN) {
+      log('WS não está conectado.');
+      return;
+    }
+    socket.send(msg);
+    log(`Enviado (WS): ${msg}`);
+  });
+
+  el('sendHttpBtn').addEventListener('click', async () => {
+    const id = el('userId').value.trim();
+    const room = el('roomId').value.trim();
+    const msg = el('message').value.trim();
+    if (!id || !room || !msg) {
+      log('Preencha userId, roomId e mensagem.');
+      return;
+    }
+
+    const base = el('wsBase').value.trim().replace(/^ws/, 'http');
+    const url = base.replace('/ws/connect', '/ws/message') + `?id=${encodeURIComponent(id)}&dev=${el('devBypass').value}`;
+
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Dev-Bypass': el('devBypass').value },
+        body: JSON.stringify({ room, content: msg })
+      });
+      const text = await res.text();
+      log(`HTTP ${res.status}: ${text}`);
+    } catch (e) {
+      log(`Erro HTTP: ${e.message}`);
+    }
+  });
+
+  el('clearBtn').addEventListener('click', () => {
+    logBox.textContent = '';
+  });
+</script>
+</body>
+</html>

@@ -3,9 +3,9 @@ package main
 import (
 	controller "github.com/YagoSchramm/ApiMyChat/internal/conroller"
 	"github.com/YagoSchramm/ApiMyChat/internal/db"
+	"github.com/YagoSchramm/ApiMyChat/internal/entity"
 	"github.com/YagoSchramm/ApiMyChat/internal/repository"
 	"github.com/YagoSchramm/ApiMyChat/internal/service"
-	"github.com/YagoSchramm/ApiMyChat/internal/service/model"
 	"github.com/YagoSchramm/ApiMyChat/internal/usecase"
 	"github.com/gin-gonic/gin"
 )
@@ -38,7 +38,7 @@ func main() {
 		Usecase:     uc,
 		AuthUsecase: *authUsecase,
 	}
-	hub := model.NewHub()
+	hub := entity.NewHub()
 	msgRepo := repository.NewMessageRepository(db)
 	msgUse := usecase.NewMessageUsecase(msgRepo, hub)
 	msgController := &controller.MessageController{

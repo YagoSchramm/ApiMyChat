@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/YagoSchramm/ApiMyChat/internal/service/model"
+	"github.com/YagoSchramm/ApiMyChat/internal/entity"
 	"github.com/YagoSchramm/ApiMyChat/internal/usecase"
 	"github.com/gin-gonic/gin"
 )
@@ -14,7 +14,7 @@ type EmailController struct {
 }
 
 func (ctrl *EmailController) RequestOTP(c *gin.Context) {
-	var req model.EmailRequest
+	var req entity.EmailRequest
 
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "E-mail inválido"})
@@ -30,7 +30,7 @@ func (ctrl *EmailController) RequestOTP(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Código enviado!"})
 }
 func (ctrl *EmailController) VerifyCode(c *gin.Context) {
-	var req model.VerifyRequest
+	var req entity.VerifyRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(400, gin.H{"error": "Dados inválidos"})
 		return

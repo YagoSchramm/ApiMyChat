@@ -1,4 +1,4 @@
-package model
+package entity
 
 type EmailRequest struct {
 	Email string `json:"email"`

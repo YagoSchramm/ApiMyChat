@@ -4,27 +4,27 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/YagoSchramm/ApiMyChat/internal/service/model"
+	"github.com/YagoSchramm/ApiMyChat/internal/entity"
 )
 
 type WebSocketService struct {
-	Rooms map[string]*model.RoomClients
+	Rooms map[string]*entity.RoomClients
 	Mutex sync.RWMutex
 }
 
 func NewWebSocketService() *WebSocketService {
 	return &WebSocketService{
-		Rooms: make(map[string]*model.RoomClients),
+		Rooms: make(map[string]*entity.RoomClients),
 	}
 }
 
-func (s *WebSocketService) JoinRoom(roomID string, client *model.Client) {
+func (s *WebSocketService) JoinRoom(roomID string, client *entity.Client) {
 
 	s.Mutex.Lock()
 	room, exists := s.Rooms[roomID]
 	if !exists {
-		room = &model.RoomClients{
-			Clients: make(map[string]*model.Client),
+		room = &entity.RoomClients{
+			Clients: make(map[string]*entity.Client),
 		}
 		s.Rooms[roomID] = room
 	}

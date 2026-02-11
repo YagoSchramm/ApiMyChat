@@ -7,7 +7,6 @@ import (
 	"net/http"
 
 	"github.com/YagoSchramm/ApiMyChat/internal/entity"
-	"github.com/YagoSchramm/ApiMyChat/internal/service/model"
 )
 
 type SupabaseService struct {
@@ -21,7 +20,7 @@ func NewSupabaseAuthService(url, key string) *SupabaseService {
 		Key: key,
 	}
 }
-func (s *SupabaseService) Login(email, password string) (*model.LoginResponse, error) {
+func (s *SupabaseService) Login(email, password string) (*entity.LoginResponse, error) {
 
 	body := map[string]string{
 		"email":    email,
@@ -51,7 +50,7 @@ func (s *SupabaseService) Login(email, password string) (*model.LoginResponse, e
 		return nil, errors.New("invalid credentials")
 	}
 
-	var response model.LoginResponse
+	var response entity.LoginResponse
 	json.NewDecoder(res.Body).Decode(&response)
 
 	return &response, nil

@@ -4,20 +4,20 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/YagoSchramm/ApiMyChat/internal/service/model"
+	"github.com/YagoSchramm/ApiMyChat/internal/entity"
 	"github.com/YagoSchramm/ApiMyChat/internal/usecase"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 )
 
 type WSController struct {
-	hub         *model.Hub
+	hub         *entity.Hub
 	msgUsecase  *usecase.MessageUsecase
 	authUsecase *usecase.AuthUsecase
 }
 
 func NewWSController(
-	hub *model.Hub,
+	hub *entity.Hub,
 	msg *usecase.MessageUsecase,
 	auth *usecase.AuthUsecase,
 ) *WSController {
@@ -51,10 +51,6 @@ func (c *WSController) resolveUserID(ctx *gin.Context, rawID string) (string, er
 		return rawID, nil
 	}
 
-	if ctx.Query("dev") == "1" || ctx.GetHeader("X-Dev-Bypass") == "1" {
-		return rawID, nil
-	}
-
 	return c.authUsecase.VerifyJWT(rawID)
 }
 
@@ -80,7 +76,7 @@ func (c *WSController) Connect(ctx *gin.Context) {
 		return
 	}
 
-	client := &model.Client{
+	client := &entity.Client{
 		UserID: userID,
 		RoomID: req.RoomID,
 		Conn:   conn,

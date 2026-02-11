@@ -6,16 +6,15 @@ import (
 
 	"github.com/YagoSchramm/ApiMyChat/internal/entity"
 	"github.com/YagoSchramm/ApiMyChat/internal/repository"
-	"github.com/YagoSchramm/ApiMyChat/internal/service/model"
 	"github.com/google/uuid"
 )
 
 type MessageUsecase struct {
 	repo repository.MessageRepository
-	hub  *model.Hub
+	hub  *entity.Hub
 }
 
-func NewMessageUsecase(r repository.MessageRepository, hub *model.Hub) *MessageUsecase {
+func NewMessageUsecase(r repository.MessageRepository, hub *entity.Hub) *MessageUsecase {
 	return &MessageUsecase{repo: r, hub: hub}
 }
 func (u *MessageUsecase) SendMessage(sender, room, content string) {

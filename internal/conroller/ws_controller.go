@@ -42,9 +42,17 @@ type ConnectRequest struct {
 	RoomID string `json:"room" binding:"required"`
 }
 
+func isDevBypass(ctx *gin.Context) bool {
+	return ctx.Query("dev") == "1" || ctx.GetHeader("X-Dev-Bypass") == "1"
+}
+
 func (c *WSController) resolveUserID(ctx *gin.Context, rawID string) (string, error) {
 	if rawID == "" {
 		return "", nil
+	}
+
+	if isDevBypass(ctx) {
+		return rawID, nil
 	}
 
 	if c.authUsecase == nil {

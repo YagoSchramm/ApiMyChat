@@ -3,8 +3,9 @@ package entity
 import "time"
 
 type Room struct {
-	ID        string
-	UserAID   string
-	UserBID   string
-	CreatedAt time.Time
+	Name           string
+	ID             string
+	RoomClient     RoomClients
+	CreatedAt      time.Time
+	LastConnection map[string]time.Time
 }

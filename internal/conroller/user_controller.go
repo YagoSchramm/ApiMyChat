@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/YagoSchramm/ApiMyChat/internal/entity"
@@ -16,11 +17,12 @@ type UserController struct {
 func (uctrl *UserController) CreateUser(c *gin.Context) {
 	var req entity.User
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, "Erro de registro")
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 	resp, err := uctrl.AuthUsecase.Supabase.CreateUser(req.Email, req.Password)
 	if err != nil {
+		fmt.Println("erro no supabase")
 		c.JSON(http.StatusInternalServerError, err)
 		return
 	}
@@ -54,15 +56,12 @@ func (uctrl *UserController) GetByEmail(c *gin.Context) {
 	user1 := user
 	c.JSON(http.StatusAccepted, user1)
 }
-func (uctrl *UserController) GetAll(id string, c *gin.Context) {
-	var req string
+func (uctrl *UserController) GetAll(c *gin.Context) {
+	id := c.Param("id")
 	var userList []entity.User
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, err)
-		return
-	}
 	userList, err := uctrl.Usecase.GetAll(id)
 	if err != nil {
+
 		c.JSON(http.StatusInternalServerError, err)
 		return
 	}
@@ -80,6 +79,7 @@ func (uctrl *UserController) Login(ctx *gin.Context) {
 
 	token, err := uctrl.AuthUsecase.Login(req.Email, req.Password)
 	if err != nil {
+		fmt.Println("erro no supabase")
 		ctx.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 		return
 	}

@@ -51,10 +51,10 @@ func (ur *UserRepository) GetAll(id string) ([]entity.User, error) {
 	for rows.Next() {
 		err = rows.Scan(
 			&userObj.UID,
-			&userObj.Name,
 			&userObj.Email,
-			&userObj.CreatedAt,
+			&userObj.Name,
 			&userObj.Description,
+			&userObj.CreatedAt,
 		)
 		if err != nil {
 			fmt.Println(err)

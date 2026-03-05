@@ -7,6 +7,7 @@ type Message struct {
 	SenderID  string    `json:"senderId"`
 	RoomID    string    `json:"roomId"`
 	Content   string    `json:"content"`
+	MediaURLs []string  `json:"mediaUrls,omitempty"`
 	CreatedAt time.Time `json:"createdAt"`
 	Status    string    `json:"status"`
 }

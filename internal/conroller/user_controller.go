@@ -56,6 +56,20 @@ func (uctrl *UserController) GetByEmail(c *gin.Context) {
 	user1 := user
 	c.JSON(http.StatusAccepted, user1)
 }
+func (uctrl *UserController) UpdateUser(c *gin.Context) {
+	var req entity.UpdateUserModel
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	resp, err := uctrl.Usecase.UpdateUser(req)
+	if err != nil {
+		fmt.Println("erro no banco de dados")
+		c.JSON(http.StatusInternalServerError, err)
+		return
+	}
+	c.JSON(http.StatusOK, resp)
+}
 func (uctrl *UserController) GetAll(c *gin.Context) {
 	id := c.Param("id")
 	var userList []entity.User

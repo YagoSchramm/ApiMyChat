@@ -39,6 +39,19 @@ func (ur *UserRepository) CreateUser(user entity.User) (entity.User, error) {
 	}
 	return user, nil
 }
+func (ur *UserRepository) UpdateUser(user entity.UpdateUserModel) (entity.UpdateUserModel, error) {
+	query, err := ur.connection.Prepare("UPDATE users SET name = $1, email = $2, description = $3 WHERE uid = $4")
+	if err != nil {
+		fmt.Println(err)
+		return entity.UpdateUserModel{}, err
+	}
+	_, err = query.Exec(user.Name, user.Email, user.Description, user.UID)
+	if err != nil {
+		fmt.Println(err)
+		return entity.UpdateUserModel{}, err
+	}
+	return user, nil
+}
 func (ur *UserRepository) GetAll(id string) ([]entity.User, error) {
 	query := "select * from users"
 	rows, err := ur.connection.Query(query)

@@ -1,16 +1,12 @@
 package entity
 
-type MediaType string
-
-const (
-	MediaAudio MediaType = "MP3"
-	MediaVideo           = "MP4"
-	MediaImage MediaType = "JPG"
-)
+import "time"
 
 type Media struct {
-	ID       string
-	URL      string
-	Type     MediaType
-	Metadata *Metadata
+	ID        string    `json:"id"`
+	URL       string    `json:"url"`
+	Type      string    `json:"type"`
+	MessageID string    `json:"message_id"`
+	UserID    string    `json:"user_id"`
+	createdAt time.Time `json:"created_at"`
 }

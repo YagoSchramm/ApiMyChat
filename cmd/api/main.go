@@ -48,15 +48,23 @@ func main() {
 		AuthUsecase: *authUsecase,
 	}
 	hub := entity.NewHub()
+	fcmRepo := repository.NewFcmRepository(dbConn)
+	fcmService := service.NewFCMService()
+	fcmUsecase := usecase.NewFCMUsecase(fcmRepo, fcmService)
+	fcmController := controller.NewFCMController(fcmUsecase, authUsecase)
 	msgRepo := repository.NewMessageRepository(dbConn)
-	msgUse := usecase.NewMessageUsecase(msgRepo, hub)
+	mediaRepo := repository.NewMediaRepository(dbConn)
+	roomRepo := repository.NewRoomRepository(dbConn)
+	roomUsecase := usecase.NewRoomUsecase(roomRepo)
+	mediaUsecase := usecase.NewMediaUsecase(mediaRepo, msgRepo)
+	msgUse := usecase.NewMessageUsecase(msgRepo, mediaRepo, hub, &roomUsecase, fcmUsecase)
 	msgController := &controller.MessageController{
 		Usecase: msgUse,
 	}
-
-	wsController := controller.NewWSController(hub, msgUse, authUsecase)
-	roomRepo := repository.NewRoomRepository(dbConn)
-	roomUsecase := usecase.NewRoomUsecase(roomRepo)
+	mediaController := &controller.MediaController{
+		Usecase: mediaUsecase,
+	}
+	wsController := controller.NewWSController(hub, msgUse, authUsecase, &roomUsecase)
 	roomController := &controller.RoomController{
 		Usecase: roomUsecase,
 	}
@@ -82,8 +90,15 @@ func main() {
 	r.GET("/GetRoomByUid/:id", roomController.GetRoomById)
 	r.GET("/GetUserByID/:id", usercontroller.GetByID)
 	r.GET("/GetAll/:id", usercontroller.GetAll)
+	r.PUT("/UpdateUser", usercontroller.UpdateUser)
 	r.GET("/messages", msgController.GetByRoom)
+	r.GET("/messages/last", msgController.GetLastByRoom)
+	r.POST("/CreateMedia", mediaController.Create)
+	r.GET("/GetMediaByMessageId/:messageId", mediaController.GetByMessageId)
+	r.POST("/fcm/SaveToken", fcmController.SaveToken)
+	r.DELETE("/fcm/token", fcmController.DeleteToken)
 	r.GET("/ws/connect", wsController.Connect)
+	r.GET("/ws/connected-users", wsController.GetConnectedUsers)
 	r.POST("/ws/message", wsController.SendMessage)
 	port := getEnvOrDefault("API_PORT", "8000")
 	r.Run(":" + port)

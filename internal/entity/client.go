@@ -4,7 +4,6 @@ import "github.com/gorilla/websocket"
 
 type Client struct {
 	UserID string
-	RoomID string
 	Conn   *websocket.Conn
 	Send   chan []byte
 }

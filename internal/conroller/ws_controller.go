@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"encoding/json"
 	"log"
 	"net/http"
 
@@ -14,17 +15,20 @@ type WSController struct {
 	hub         *entity.Hub
 	msgUsecase  *usecase.MessageUsecase
 	authUsecase *usecase.AuthUsecase
+	roomUsecase *usecase.RoomUsecase
 }
 
 func NewWSController(
 	hub *entity.Hub,
 	msg *usecase.MessageUsecase,
 	auth *usecase.AuthUsecase,
+	room *usecase.RoomUsecase,
 ) *WSController {
 	return &WSController{
 		hub:         hub,
 		msgUsecase:  msg,
 		authUsecase: auth,
+		roomUsecase: room,
 	}
 }
 
@@ -39,7 +43,17 @@ type SendMessageRequest struct {
 
 type ConnectRequest struct {
 	UserID string `json:"id" binding:"required"`
-	RoomID string `json:"room" binding:"required"`
+}
+
+type WSInboundMessage struct {
+	Type    string `json:"type"`
+	RoomID  string `json:"room"`
+	Content string `json:"content"`
+}
+
+type ConnectedUsersResponse struct {
+	Users []string `json:"users"`
+	Count int      `json:"count"`
 }
 
 func isDevBypass(ctx *gin.Context) bool {
@@ -66,10 +80,9 @@ func (c *WSController) Connect(ctx *gin.Context) {
 
 	var req ConnectRequest
 	req.UserID = ctx.Query("id")
-	req.RoomID = ctx.Query("room")
 
-	if req.UserID == "" || req.RoomID == "" {
-		ctx.JSON(http.StatusBadRequest, "id and room required")
+	if req.UserID == "" {
+		ctx.JSON(http.StatusBadRequest, "id required")
 		return
 	}
 
@@ -78,6 +91,13 @@ func (c *WSController) Connect(ctx *gin.Context) {
 		ctx.JSON(http.StatusUnauthorized, "invalid token or user")
 		return
 	}
+
+	roomIDs, err := c.loadUserRoomIDs(userID)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, "failed to load user rooms")
+		return
+	}
+
 	conn, err := upgrader.Upgrade(ctx.Writer, ctx.Request, nil)
 	if err != nil {
 		log.Println("upgrade error:", err)
@@ -86,22 +106,20 @@ func (c *WSController) Connect(ctx *gin.Context) {
 
 	client := &entity.Client{
 		UserID: userID,
-		RoomID: req.RoomID,
 		Conn:   conn,
 		Send:   make(chan []byte, 256),
 	}
-	c.hub.JoinRoom(req.RoomID, client)
+	c.hub.Connect(client)
+	for _, roomID := range roomIDs {
+		c.hub.JoinRoom(roomID, userID)
+	}
 
 	log.Println("user conectado:", userID)
 	go client.WritePump()
 	client.ReadPump(func(msg []byte) {
-		c.msgUsecase.SendMessage(
-			client.UserID,
-			client.RoomID,
-			string(msg),
-		)
+		c.handleInboundMessage(userID, msg)
 	})
-	c.hub.Leave(req.RoomID, userID)
+	c.hub.Disconnect(userID)
 	conn.Close()
 
 	log.Println("user saiu:", userID)
@@ -128,4 +146,55 @@ func (c *WSController) SendMessage(ctx *gin.Context) {
 
 	c.msgUsecase.SendMessage(userID, req.RoomID, req.Content)
 	ctx.JSON(http.StatusAccepted, gin.H{"status": "sent"})
+}
+
+func (c *WSController) GetConnectedUsers(ctx *gin.Context) {
+	users := c.hub.ConnectedUsers()
+	ctx.JSON(http.StatusOK, ConnectedUsersResponse{
+		Users: users,
+		Count: len(users),
+	})
+}
+
+func (c *WSController) loadUserRoomIDs(userID string) ([]string, error) {
+	if c.roomUsecase == nil {
+		return []string{}, nil
+	}
+
+	rooms, err := c.roomUsecase.GetRoomsByUid(userID)
+	if err != nil {
+		return nil, err
+	}
+
+	roomIDs := make([]string, 0, len(rooms))
+	for _, room := range rooms {
+		roomIDs = append(roomIDs, room.ID)
+	}
+
+	return roomIDs, nil
+}
+
+func (c *WSController) handleInboundMessage(userID string, msg []byte) {
+	var payload WSInboundMessage
+	if err := json.Unmarshal(msg, &payload); err != nil {
+		return
+	}
+
+	switch payload.Type {
+	case "", "message":
+		if payload.RoomID == "" || payload.Content == "" {
+			return
+		}
+		c.msgUsecase.SendMessage(userID, payload.RoomID, payload.Content)
+	case "join":
+		if payload.RoomID == "" {
+			return
+		}
+		c.hub.JoinRoom(payload.RoomID, userID)
+	case "leave":
+		if payload.RoomID == "" {
+			return
+		}
+		c.hub.LeaveRoom(payload.RoomID, userID)
+	}
 }

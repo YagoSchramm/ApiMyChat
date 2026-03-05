@@ -177,10 +177,9 @@
   function buildWsUrl() {
     const base = el('wsBase').value.trim();
     const id = encodeURIComponent(el('userId').value.trim());
-    const room = encodeURIComponent(el('roomId').value.trim());
     const dev = el('devBypass').value;
     const sep = base.includes('?') ? '&' : '?';
-    return `${base}${sep}id=${id}&room=${room}&dev=${dev}`;
+    return `${base}${sep}id=${id}&dev=${dev}`;
   }
 
   el('connectBtn').addEventListener('click', () => {
@@ -230,14 +229,25 @@
   });
 
   el('sendBtn').addEventListener('click', () => {
+    const id = el('userId').value.trim();
+    const room = el('roomId').value.trim();
     const msg = el('message').value.trim();
-    if (!msg) return;
+    if (!id || !room || !msg) {
+      log('Preencha userId, roomId e mensagem.');
+      return;
+    }
     if (!socket || socket.readyState !== WebSocket.OPEN) {
       log('WS não está conectado.');
       return;
     }
-    socket.send(msg);
-    log(`Enviado (WS): ${msg}`);
+
+    const payload = {
+      type: 'message',
+      room,
+      content: msg
+    };
+    socket.send(JSON.stringify(payload));
+    log(`Enviado (WS) userId=${id} roomId=${room}: ${msg}`);
   });
 
   el('sendHttpBtn').addEventListener('click', async () => {

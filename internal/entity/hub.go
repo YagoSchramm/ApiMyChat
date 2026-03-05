@@ -1,6 +1,9 @@
 package entity
 
-import "sync"
+import (
+	"sort"
+	"sync"
+)
 
 type Hub struct {
 	Rooms       map[string]map[string]*Client
@@ -14,7 +17,17 @@ func NewHub() *Hub {
 		OnlineUsers: make(map[string]*Client),
 	}
 }
-func (h *Hub) JoinRoom(roomID string, c *Client) {
+
+func (h *Hub) Connect(c *Client) {
+	h.Mutex.Lock()
+	defer h.Mutex.Unlock()
+
+	h.disconnectLocked(c.UserID)
+
+	h.OnlineUsers[c.UserID] = c
+}
+
+func (h *Hub) JoinRoom(roomID string, userID string) {
 	h.Mutex.Lock()
 	defer h.Mutex.Unlock()
 
@@ -22,22 +35,33 @@ func (h *Hub) JoinRoom(roomID string, c *Client) {
 		h.Rooms[roomID] = make(map[string]*Client)
 	}
 
-	h.Rooms[roomID][c.UserID] = c
-	h.OnlineUsers[c.UserID] = c
+	client, ok := h.OnlineUsers[userID]
+	if !ok {
+		return
+	}
+
+	h.Rooms[roomID][userID] = client
 }
-func (h *Hub) Leave(roomID, userID string) {
+
+func (h *Hub) LeaveRoom(roomID, userID string) {
 	h.Mutex.Lock()
 	defer h.Mutex.Unlock()
 
 	if room, ok := h.Rooms[roomID]; ok {
-		if client, ok := room[userID]; ok {
-			close(client.Send)
-			delete(room, userID)
+		delete(room, userID)
+		if len(room) == 0 {
+			delete(h.Rooms, roomID)
 		}
 	}
-
-	delete(h.OnlineUsers, userID)
 }
+
+func (h *Hub) Disconnect(userID string) {
+	h.Mutex.Lock()
+	defer h.Mutex.Unlock()
+
+	h.disconnectLocked(userID)
+}
+
 func (h *Hub) Broadcast(roomID string, msg []byte) {
 	h.Mutex.Lock()
 	defer h.Mutex.Unlock()
@@ -52,9 +76,43 @@ func (h *Hub) Broadcast(roomID string, msg []byte) {
 		select {
 		case client.Send <- msg:
 		default:
-			close(client.Send)
-			delete(room, client.UserID)
-			delete(h.OnlineUsers, client.UserID)
+			h.disconnectLocked(client.UserID)
+		}
+	}
+}
+
+func (h *Hub) ConnectedUsers() []string {
+	h.Mutex.RLock()
+	defer h.Mutex.RUnlock()
+
+	users := make([]string, 0, len(h.OnlineUsers))
+	for userID := range h.OnlineUsers {
+		users = append(users, userID)
+	}
+
+	sort.Strings(users)
+	return users
+}
+
+func (h *Hub) IsOnline(userID string) bool {
+	h.Mutex.RLock()
+	defer h.Mutex.RUnlock()
+
+	_, ok := h.OnlineUsers[userID]
+	return ok
+}
+
+func (h *Hub) disconnectLocked(userID string) {
+	if client, ok := h.OnlineUsers[userID]; ok {
+		close(client.Send)
+		_ = client.Conn.Close()
+		delete(h.OnlineUsers, userID)
+	}
+
+	for roomID, room := range h.Rooms {
+		delete(room, userID)
+		if len(room) == 0 {
+			delete(h.Rooms, roomID)
 		}
 	}
 }

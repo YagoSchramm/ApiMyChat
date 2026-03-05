@@ -28,14 +28,34 @@ func (r *MessageRepository) Create(msg *entity.Message) error {
 	)
 	return err
 }
+func (r *MessageRepository) LastByRoom(roomID string) (*entity.Message, error) {
+	query := `
+	SELECT id, room_id, sender_id, content, created_at
+	FROM messages
+	WHERE room_id = $1
+	ORDER BY created_at DESC
+	LIMIT 1`
+	row := r.connection.QueryRow(query, roomID)
 
+	var msg entity.Message
+	if err := row.Scan(
+		&msg.ID,
+		&msg.RoomID,
+		&msg.SenderID,
+		&msg.Content,
+		&msg.CreatedAt,
+	); err != nil {
+		return nil, err
+	}
+	return &msg, nil
+}
 func (r *MessageRepository) GetByRoom(roomID string, limit int) ([]entity.Message, error) {
 
 	query := `
 	SELECT id, room_id, sender_id, content, created_at
 	FROM messages
 	WHERE room_id = $1
-	ORDER BY created_at DESC
+	ORDER BY created_at ASC
 	LIMIT $2`
 
 	rows, err := r.connection.Query(query, roomID, limit)

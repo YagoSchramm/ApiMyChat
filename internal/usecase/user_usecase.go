@@ -20,7 +20,7 @@ func (uc *UserUseCase) CreateUser(user entity.User) (entity.User, error) {
 	user1, err := uc.urepo.CreateUser(user)
 	if err != nil {
 		fmt.Println(err)
-		return entity.User{}, nil
+		return entity.User{}, err
 	}
 	return user1, nil
 }
@@ -28,15 +28,24 @@ func (uc *UserUseCase) GetByID(id string) (entity.User, error) {
 	user, err := uc.urepo.GetByID(id)
 	if err != nil {
 		fmt.Println(err)
-		return entity.User{}, nil
+		return entity.User{}, err
 	}
 	return user, nil
 }
+func (uc *UserUseCase) UpdateUser(user entity.UpdateUserModel) (entity.UpdateUserModel, error) {
+	user1, err := uc.urepo.UpdateUser(user)
+	if err != nil {
+		fmt.Println(err)
+		return entity.UpdateUserModel{}, err
+	}
+	return user1, nil
+}
+
 func (uc *UserUseCase) GetByEmail(email string) (entity.User, error) {
 	user, err := uc.urepo.GetByEmail(email)
 	if err != nil {
 		fmt.Println(err)
-		return entity.User{}, nil
+		return entity.User{}, err
 	}
 	return user, nil
 }

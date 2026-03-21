@@ -28,6 +28,7 @@ func (mctrl *MessageController) GetLastByRoom(ctx *gin.Context) {
 	}
 	ctx.JSON(http.StatusOK, msg)
 }
+
 func (mctrl *MessageController) GetByRoom(ctx *gin.Context) {
 	roomID := ctx.Query("room")
 	if roomID == "" {

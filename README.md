@@ -49,17 +49,74 @@ API de chat em Go (Gin) com WebSocket, PostgreSQL e integrações externas (Supa
 - `DELETE /fcm/token?token=...` – remove token.
 - WebSocket: `GET /ws/connect?id=<jwt|uid>` (usar `dev=1` ou header `X-Dev-Bypass:1` para pular validação), `GET /ws/connected-users` lista online, `POST /ws/message` envia por HTTP; mensagens WS seguem JSON `{ "type": "message", "room": "room-id", "content": "..." }` (também `type: join|leave`).
 
-## Esquema esperado no PostgreSQL
-- `users(uid PK, email, name, description, created_at)`
-- `rooms(id PK, name, created_at)`
-- `room_users(room_id FK, user_id FK, joined_at, left_at)`
-- `messages(id PK, room_id FK, sender_id FK, content, created_at, status)`
-- `medias(uid, message_id FK, url, type, created_at)`
-- `user_devices(user_id FK, fcm_token, created_at)`
+## Esquema e automação do banco
+- DDL em `sql/init.sql` (conteúdo completo abaixo).
+- O `docker-compose.yml` monta `./sql` em `/docker-entrypoint-initdb.d`; na primeira subida o Postgres cria o schema automaticamente.
+- Se já houver volume `pgdata`, aplique manualmente: `psql "$DB_URL" -f sql/init.sql` ou `psql -h localhost -U $DB_USER -d $DB_NAME -f sql/init.sql`.
+
+### DDL completo
+```sql
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+
+CREATE TABLE IF NOT EXISTS users (
+    uid UUID PRIMARY KEY,
+    email TEXT NOT NULL UNIQUE,
+    name TEXT NOT NULL,
+    description TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS rooms (
+    name TEXT NOT NULL,
+    id TEXT PRIMARY KEY,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS medias (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    type VARCHAR(50) NOT NULL,
+    message_id UUID NOT NULL,
+    uid UUID NOT NULL,
+    url TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS room_users (
+    room_id TEXT NOT NULL,
+    user_id TEXT NOT NULL,
+    joined_at TIMESTAMP DEFAULT NOW(),
+    left_at TIMESTAMP NULL,
+    PRIMARY KEY (room_id, user_id),
+    FOREIGN KEY (room_id) REFERENCES rooms(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_room_users_user ON room_users(user_id);
+CREATE INDEX IF NOT EXISTS idx_room_users_room ON room_users(room_id);
+
+CREATE TABLE IF NOT EXISTS messages (
+   id TEXT PRIMARY KEY,
+   sender_id TEXT NOT NULL,
+   room_id TEXT NOT NULL,
+   content TEXT NOT NULL,
+   status VARCHAR(20) NOT NULL DEFAULT 'sent',
+   created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+   CONSTRAINT fk_room
+       FOREIGN KEY(room_id)
+       REFERENCES rooms(id)
+       ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS user_devices (
+ id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+ user_id TEXT NOT NULL,
+ fcm_token TEXT NOT NULL,
+ created_at TIMESTAMP DEFAULT NOW()
+);
+```
 
 ## Testes e debug
 - `go test ./...` (configure o banco, se necessário).
 - `ws_test.html` oferece um cliente WebSocket simples para inspeção local.
 
 ## Deploy
-- Dockerfile multi-stage pronto para provedores que aceitam containers. A Vercel não executa containers; consulte `DEPLOY.md` para opções como Render, Fly.io, Railway ou Cloud Run.
+- Dockerfile multi-stage pronto para provedores que aceitam containers. Consulte `DEPLOY.md` para opções como Render, Fly.io, Railway ou Cloud Run.
